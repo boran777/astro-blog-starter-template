@@ -29,17 +29,20 @@
         <input id="producerInput" placeholder="Üretici" />
         <input id="titleInput" placeholder="İş / Aktivite" />
         <input id="ownerInput" placeholder="Sorumlu kişi" />
+
         <select id="statusInput">
           <option>Beklemede</option>
           <option>Üzerinde Çalışılıyor</option>
           <option>Tamamlandı</option>
           <option>Blokaj</option>
         </select>
+
         <select id="priorityInput">
           <option>Orta</option>
           <option>Yüksek</option>
           <option>Düşük</option>
         </select>
+
         <input id="dateInput" type="date" />
         <button id="addButton">Yeni İş Ekle</button>
       </section>
@@ -76,20 +79,22 @@
           </div>
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Üretici</th>
-              <th>İş</th>
-              <th>Sorumlu</th>
-              <th>Durum</th>
-              <th>Öncelik</th>
-              <th>Hedef Tarih</th>
-              <th>Aksiyon</th>
-            </tr>
-          </thead>
-          <tbody id="taskBody"></tbody>
-        </table>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Üretici</th>
+                <th>İş</th>
+                <th>Sorumlu</th>
+                <th>Durum</th>
+                <th>Öncelik</th>
+                <th>Hedef Tarih</th>
+                <th>Aksiyon</th>
+              </tr>
+            </thead>
+            <tbody id="taskBody"></tbody>
+          </table>
+        </div>
       </section>
     </main>
 
@@ -100,16 +105,22 @@
       const priorityOptions = ["Düşük", "Orta", "Yüksek"];
 
       async function loadTasks() {
-        const response = await fetch("/api/tasks");
-        tasks = await response.json();
-        render();
+        try {
+          const response = await fetch("/api/tasks");
+          tasks = await response.json();
+          render();
+        } catch (error) {
+          console.error(error);
+          alert("Veriler alınırken hata oluştu.");
+        }
       }
 
       function countBy(items, key, onlyOpen = false) {
         return items
           .filter((item) => !onlyOpen || item.status !== "Tamamlandı")
           .reduce((acc, item) => {
-            acc[item[key]] = (acc[item[key]] || 0) + 1;
+            const value = item[key] || "Belirtilmemiş";
+            acc[value] = (acc[value] || 0) + 1;
             return acc;
           }, {});
       }
@@ -118,18 +129,27 @@
         const container = document.getElementById(containerId);
         container.innerHTML = "";
 
-        Object.entries(data).forEach(([name, count]) => {
+        const entries = Object.entries(data);
+
+        if (entries.length === 0) {
+          container.innerHTML = `<div class="empty-mini">Kayıt yok</div>`;
+          return;
+        }
+
+        entries.forEach(([name, count]) => {
           const row = document.createElement("div");
           row.className = type === "bar" ? "bar-row" : "chip-row";
 
           if (type === "bar") {
             row.innerHTML = `
-              <span>${name}</span>
-              <div class="bar"><div style="width:${Math.min(Number(count) * 20, 100)}%"></div></div>
+              <span title="${name}">${name}</span>
+              <div class="bar">
+                <div style="width:${Math.min(Number(count) * 20, 100)}%"></div>
+              </div>
               <strong>${count}</strong>
             `;
           } else {
-            row.innerHTML = `<span>${name}</span><strong>${count}</strong>`;
+            row.innerHTML = `<span title="${name}">${name}</span><strong>${count}</strong>`;
           }
 
           container.appendChild(row);
@@ -139,14 +159,18 @@
       function setSelectOptions(selectId, label, values) {
         const select = document.getElementById(selectId);
         const current = select.value;
+
         select.innerHTML = `<option value="">${label}</option>`;
 
-        values.forEach((value) => {
-          const option = document.createElement("option");
-          option.value = value;
-          option.textContent = value;
-          select.appendChild(option);
-        });
+        values
+          .filter(Boolean)
+          .sort()
+          .forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+          });
 
         select.value = current;
       }
@@ -166,6 +190,15 @@
         renderTable();
       }
 
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
       function renderTable() {
         const tbody = document.getElementById("taskBody");
         const search = document.getElementById("searchInput").value.toLowerCase();
@@ -175,77 +208,104 @@
 
         tbody.innerHTML = "";
 
-        tasks
-          .filter((task) => {
-            const text = `${task.producer} ${task.title} ${task.owner} ${task.status} ${task.priority}`.toLowerCase();
-            return (
-              text.includes(search) &&
-              (!producer || task.producer === producer) &&
-              (!owner || task.owner === owner) &&
-              (!status || task.status === status)
-            );
-          })
-          .forEach((task) => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td><input value="${task.producer || ""}" data-field="producer" /></td>
-              <td><input value="${task.title || ""}" data-field="title" /></td>
-              <td><input value="${task.owner || ""}" data-field="owner" /></td>
-              <td>
-                <select data-field="status">
-                  ${statusOptions.map((s) => `<option ${s === task.status ? "selected" : ""}>${s}</option>`).join("")}
-                </select>
+        const filteredTasks = tasks.filter((task) => {
+          const text = `${task.producer} ${task.title} ${task.owner} ${task.status} ${task.priority}`.toLowerCase();
+
+          return (
+            text.includes(search) &&
+            (!producer || task.producer === producer) &&
+            (!owner || task.owner === owner) &&
+            (!status || task.status === status)
+          );
+        });
+
+        if (filteredTasks.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7">
+                <div class="empty-state">Gösterilecek kayıt bulunamadı.</div>
               </td>
-              <td>
-                <select data-field="priority">
-                  ${priorityOptions.map((p) => `<option ${p === task.priority ? "selected" : ""}>${p}</option>`).join("")}
-                </select>
-              </td>
-              <td><input type="date" value="${task.due_date || ""}" data-field="due_date" /></td>
-              <td class="row-actions">
+            </tr>
+          `;
+          return;
+        }
+
+        filteredTasks.forEach((task) => {
+          const tr = document.createElement("tr");
+
+          tr.innerHTML = `
+            <td>
+              <input value="${escapeHtml(task.producer)}" data-field="producer" />
+            </td>
+            <td>
+              <input class="task-title-input" value="${escapeHtml(task.title)}" data-field="title" />
+            </td>
+            <td>
+              <input value="${escapeHtml(task.owner)}" data-field="owner" />
+            </td>
+            <td>
+              <select data-field="status">
+                ${statusOptions
+                  .map((s) => `<option value="${s}" ${s === task.status ? "selected" : ""}>${s}</option>`)
+                  .join("")}
+              </select>
+            </td>
+            <td>
+              <select data-field="priority">
+                ${priorityOptions
+                  .map((p) => `<option value="${p}" ${p === task.priority ? "selected" : ""}>${p}</option>`)
+                  .join("")}
+              </select>
+            </td>
+            <td>
+              <input type="date" value="${escapeHtml(task.due_date)}" data-field="due_date" />
+            </td>
+            <td>
+              <div class="row-actions">
                 <button data-action="save">Kaydet</button>
                 <button data-action="delete" class="danger">Sil</button>
-              </td>
-            `;
+              </div>
+            </td>
+          `;
 
-            tr.querySelector('[data-action="save"]').addEventListener("click", async () => {
-              const updated = { ...task };
+          tr.querySelector('[data-action="save"]').addEventListener("click", async () => {
+            const updated = { ...task };
 
-              tr.querySelectorAll("[data-field]").forEach((input) => {
-                updated[input.dataset.field] = input.value;
-              });
-
-              await fetch(`/api/tasks/${task.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(updated),
-              });
-
-              await loadTasks();
+            tr.querySelectorAll("[data-field]").forEach((input) => {
+              updated[input.dataset.field] = input.value;
             });
 
-            tr.querySelector('[data-action="delete"]').addEventListener("click", async () => {
-              if (!confirm("Bu kayıt silinsin mi?")) return;
-
-              await fetch(`/api/tasks/${task.id}`, {
-                method: "DELETE",
-              });
-
-              await loadTasks();
+            await fetch(`/api/tasks/${task.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(updated)
             });
 
-            tbody.appendChild(tr);
+            await loadTasks();
           });
+
+          tr.querySelector('[data-action="delete"]').addEventListener("click", async () => {
+            if (!confirm("Bu kayıt silinsin mi?")) return;
+
+            await fetch(`/api/tasks/${task.id}`, {
+              method: "DELETE"
+            });
+
+            await loadTasks();
+          });
+
+          tbody.appendChild(tr);
+        });
       }
 
       document.getElementById("addButton").addEventListener("click", async () => {
         const payload = {
-          producer: document.getElementById("producerInput").value,
-          title: document.getElementById("titleInput").value,
-          owner: document.getElementById("ownerInput").value,
+          producer: document.getElementById("producerInput").value.trim(),
+          title: document.getElementById("titleInput").value.trim(),
+          owner: document.getElementById("ownerInput").value.trim(),
           status: document.getElementById("statusInput").value,
           priority: document.getElementById("priorityInput").value,
-          due_date: document.getElementById("dateInput").value,
+          due_date: document.getElementById("dateInput").value
         };
 
         if (!payload.producer || !payload.title || !payload.owner) {
@@ -256,10 +316,14 @@
         await fetch("/api/tasks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payload)
         });
 
-        document.querySelectorAll(".actions input").forEach((input) => (input.value = ""));
+        document.getElementById("producerInput").value = "";
+        document.getElementById("titleInput").value = "";
+        document.getElementById("ownerInput").value = "";
+        document.getElementById("dateInput").value = "";
+
         await loadTasks();
       });
 
@@ -279,9 +343,11 @@
     --text: #172033;
     --muted: #667085;
     --blue: #0050aa;
+    --blue-dark: #003781;
     --blue-soft: #e8f1ff;
     --border: #e5eaf2;
     --danger: #dc2626;
+    --danger-soft: #fee2e2;
     --shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
   }
 
@@ -303,7 +369,7 @@
   }
 
   .hero {
-    background: linear-gradient(135deg, #003781, #0050aa);
+    background: linear-gradient(135deg, var(--blue-dark), var(--blue));
     color: white;
     padding: 32px;
     border-radius: 28px;
@@ -319,6 +385,7 @@
     letter-spacing: 0.08em;
     font-size: 13px;
     opacity: 0.85;
+    margin: 0;
   }
 
   h1 {
@@ -330,6 +397,7 @@
     max-width: 720px;
     opacity: 0.9;
     line-height: 1.6;
+    margin: 0;
   }
 
   .main-kpi {
@@ -365,9 +433,10 @@
 
   .actions {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
+    grid-template-columns: 1fr 2fr 1fr 180px 140px 160px 150px;
+    gap: 12px;
     margin-top: 24px;
+    align-items: center;
   }
 
   .summary-grid {
@@ -385,15 +454,25 @@
   .bar-row,
   .chip-row {
     display: grid;
-    grid-template-columns: 150px 1fr 40px;
     gap: 12px;
     align-items: center;
     margin-bottom: 14px;
     color: var(--muted);
   }
 
+  .bar-row {
+    grid-template-columns: minmax(120px, 170px) 1fr 40px;
+  }
+
   .chip-row {
     grid-template-columns: 1fr 40px;
+  }
+
+  .bar-row span,
+  .chip-row span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .bar {
@@ -411,13 +490,13 @@
 
   .table-panel {
     margin-top: 24px;
+    overflow: hidden;
   }
 
   .table-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
     margin-bottom: 20px;
   }
 
@@ -428,9 +507,10 @@
 
   .filters {
     display: grid;
-    grid-template-columns: repeat(4, minmax(140px, 1fr));
-    gap: 10px;
-    min-width: 620px;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 12px;
+    min-width: 0;
+    width: 100%;
   }
 
   input,
@@ -442,6 +522,13 @@
     background: white;
     color: var(--text);
     width: 100%;
+    font-family: inherit;
+  }
+
+  input:focus,
+  select:focus {
+    outline: 2px solid rgba(0, 80, 170, 0.18);
+    border-color: var(--blue);
   }
 
   button {
@@ -450,15 +537,34 @@
     border: none;
     cursor: pointer;
     font-weight: 700;
+    transition: 0.2s ease;
+  }
+
+  button:hover {
+    background: var(--blue-dark);
   }
 
   button.danger {
     background: var(--danger);
   }
 
+  button.danger:hover {
+    background: #991b1b;
+  }
+
+  .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: white;
+  }
+
   table {
     width: 100%;
+    min-width: 1120px;
     border-collapse: collapse;
+    background: white;
   }
 
   th {
@@ -466,41 +572,100 @@
     font-size: 13px;
     color: var(--muted);
     background: #f8fafc;
-    padding: 14px;
+    padding: 14px 12px;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
   }
 
   td {
     padding: 10px;
     border-bottom: 1px solid var(--border);
-    vertical-align: top;
+    vertical-align: middle;
+  }
+
+  tbody tr:hover {
+    background: #fbfdff;
+  }
+
+  td input,
+  td select {
+    width: 100%;
+    min-width: 120px;
+    height: 40px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  .task-title-input {
+    min-width: 280px;
   }
 
   .row-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 90px 70px;
     gap: 8px;
+    min-width: 170px;
   }
 
-  @media (max-width: 1000px) {
-    .hero,
-    .table-header {
-      flex-direction: column;
+  .row-actions button {
+    height: 40px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  .empty-state {
+    padding: 32px;
+    text-align: center;
+    color: var(--muted);
+    background: #f8fafc;
+    border-radius: 14px;
+  }
+
+  .empty-mini {
+    color: var(--muted);
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 14px;
+    text-align: center;
+  }
+
+  @media (max-width: 1100px) {
+    .actions {
+      grid-template-columns: 1fr 1fr;
     }
 
-    .summary-grid,
+    .summary-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .page {
+      padding: 18px;
+    }
+
+    .hero {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 30px;
+    }
+
+    .main-kpi {
+      width: 100%;
+    }
+
     .actions {
       grid-template-columns: 1fr;
     }
 
     .filters {
-      min-width: 0;
-      width: 100%;
       grid-template-columns: 1fr;
-    }
-
-    table {
-      display: block;
-      overflow-x: auto;
     }
   }
 </style>
