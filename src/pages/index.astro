@@ -1,50 +1,431 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+const tasks = [
+  {
+    producer: "Cloudflare",
+    title: "WAF rule set kontrolü",
+    owner: "Boran",
+    status: "Üzerinde Çalışılıyor",
+    priority: "Yüksek",
+    date: "2026-05-20"
+  },
+  {
+    producer: "Check Point",
+    title: "Gateway health check",
+    owner: "Ahmet",
+    status: "Beklemede",
+    priority: "Orta",
+    date: "2026-05-22"
+  },
+  {
+    producer: "Forcepoint",
+    title: "DLP policy review",
+    owner: "Mehmet",
+    status: "Tamamlandı",
+    priority: "Düşük",
+    date: "2026-05-15"
+  },
+  {
+    producer: "Citrix",
+    title: "ADC sertifika kontrolü",
+    owner: "Boran",
+    status: "Beklemede",
+    priority: "Yüksek",
+    date: "2026-05-25"
+  }
+];
+
+const openTasks = tasks.filter((t) => t.status !== "Tamamlandı");
+
+const producerCounts = {};
+const ownerCounts = {};
+const statusCounts = {};
+
+for (const task of tasks) {
+  producerCounts[task.producer] = (producerCounts[task.producer] || 0) + 1;
+  ownerCounts[task.owner] = (ownerCounts[task.owner] || 0) + 1;
+  statusCounts[task.status] = (statusCounts[task.status] || 0) + 1;
+}
 ---
 
-<!doctype html>
-<html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main>
-			<h1>🧑‍🚀 Hello, Astronaut!</h1>
-			<p>
-				Welcome to the official <a href="https://astro.build/">Astro</a> blog starter template. This
-				template serves as a lightweight, minimally-styled starting point for anyone looking to build
-				a personal website, blog, or portfolio with Astro.
-			</p>
-			<p>
-				This template comes with a few integrations already configured in your
-				<code>astro.config.mjs</code> file. You can customize your setup with
-				<a href="https://astro.build/integrations">Astro Integrations</a> to add tools like Tailwind,
-				React, or Vue to your project.
-			</p>
-			<p>Here are a few ideas on how to get started with the template:</p>
-			<ul>
-				<li>Edit this page in <code>src/pages/index.astro</code></li>
-				<li>Edit the site header items in <code>src/components/Header.astro</code></li>
-				<li>Add your name to the footer in <code>src/components/Footer.astro</code></li>
-				<li>Check out the included blog posts in <code>src/content/blog/</code></li>
-				<li>Customize the blog post page layout in <code>src/layouts/BlogPost.astro</code></li>
-			</ul>
-			<p>
-				Have fun! If you get stuck, remember to <a href="https://docs.astro.build/"
-					>read the docs
-				</a> or <a href="https://astro.build/chat">join us on Discord</a> to ask questions.
-			</p>
-			<p>
-				Looking for a blog template with a bit more personality? Check out <a
-					href="https://github.com/Charca/astro-blog-template"
-					>astro-blog-template
-				</a> by <a href="https://twitter.com/Charca">Maxi Ferreira</a>.
-			</p>
-		</main>
-		<Footer />
-	</body>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Allianz Güvenlik İşleri</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Allianz Operasyon Dashboard</p>
+          <h1>Güvenlik İşleri Takip Ekranı</h1>
+          <p class="subtitle">
+            Üretici, sorumlu kişi ve durum bazlı aylık güvenlik işlerinin tek ekrandan takibi.
+          </p>
+        </div>
+
+        <div class="main-kpi">
+          <span>Toplam Açık İş</span>
+          <strong>{openTasks.length}</strong>
+        </div>
+      </section>
+
+      <section class="summary-grid">
+        <div class="panel">
+          <h2>Üretici Bazlı Açık İş</h2>
+          {Object.entries(producerCounts).map(([name, count]) => (
+            <div class="bar-row">
+              <span>{name}</span>
+              <div class="bar">
+                <div style={`width:${Number(count) * 25}%`}></div>
+              </div>
+              <strong>{count}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div class="panel">
+          <h2>Sorumlu Kişi Dağılımı</h2>
+          {Object.entries(ownerCounts).map(([name, count]) => (
+            <div class="chip-row">
+              <span>{name}</span>
+              <strong>{count}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div class="panel">
+          <h2>Durum Özeti</h2>
+          {Object.entries(statusCounts).map(([name, count]) => (
+            <div class="status-row">
+              <span class={`dot ${name.replaceAll(" ", "-")}`}></span>
+              <span>{name}</span>
+              <strong>{count}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section class="table-panel">
+        <div class="table-header">
+          <div>
+            <h2>İş Listesi</h2>
+            <p>Filtreleme ve arama destekli operasyon tablosu.</p>
+          </div>
+
+          <div class="filters">
+            <input id="searchInput" placeholder="Ara..." />
+            <select id="producerFilter">
+              <option value="">Tüm Üreticiler</option>
+              {[...new Set(tasks.map((t) => t.producer))].map((producer) => (
+                <option value={producer}>{producer}</option>
+              ))}
+            </select>
+
+            <select id="ownerFilter">
+              <option value="">Tüm Sorumlular</option>
+              {[...new Set(tasks.map((t) => t.owner))].map((owner) => (
+                <option value={owner}>{owner}</option>
+              ))}
+            </select>
+
+            <select id="statusFilter">
+              <option value="">Tüm Durumlar</option>
+              {[...new Set(tasks.map((t) => t.status))].map((status) => (
+                <option value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Üretici</th>
+              <th>İş</th>
+              <th>Sorumlu</th>
+              <th>Durum</th>
+              <th>Öncelik</th>
+              <th>Hedef Tarih</th>
+            </tr>
+          </thead>
+          <tbody id="taskBody">
+            {tasks.map((task) => (
+              <tr
+                data-producer={task.producer}
+                data-owner={task.owner}
+                data-status={task.status}
+                data-search={`${task.producer} ${task.title} ${task.owner} ${task.status} ${task.priority}`}
+              >
+                <td>{task.producer}</td>
+                <td>{task.title}</td>
+                <td>{task.owner}</td>
+                <td><span class="badge">{task.status}</span></td>
+                <td>{task.priority}</td>
+                <td>{task.date}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      const searchInput = document.getElementById("searchInput");
+      const producerFilter = document.getElementById("producerFilter");
+      const ownerFilter = document.getElementById("ownerFilter");
+      const statusFilter = document.getElementById("statusFilter");
+      const rows = Array.from(document.querySelectorAll("#taskBody tr"));
+
+      function applyFilters() {
+        const search = searchInput.value.toLowerCase();
+        const producer = producerFilter.value;
+        const owner = ownerFilter.value;
+        const status = statusFilter.value;
+
+        rows.forEach((row) => {
+          const matchSearch = row.dataset.search.toLowerCase().includes(search);
+          const matchProducer = !producer || row.dataset.producer === producer;
+          const matchOwner = !owner || row.dataset.owner === owner;
+          const matchStatus = !status || row.dataset.status === status;
+
+          row.style.display =
+            matchSearch && matchProducer && matchOwner && matchStatus
+              ? ""
+              : "none";
+        });
+      }
+
+      [searchInput, producerFilter, ownerFilter, statusFilter].forEach((el) => {
+        el.addEventListener("input", applyFilters);
+      });
+    </script>
+  </body>
 </html>
+
+<style>
+  :root {
+    --bg: #f4f7fb;
+    --card: #ffffff;
+    --text: #172033;
+    --muted: #667085;
+    --blue: #0050aa;
+    --blue-soft: #e8f1ff;
+    --border: #e5eaf2;
+    --shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px;
+  }
+
+  .hero {
+    background: linear-gradient(135deg, #003781, #0050aa);
+    color: white;
+    padding: 32px;
+    border-radius: 28px;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: center;
+    box-shadow: var(--shadow);
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
+  h1 {
+    font-size: 40px;
+    margin: 8px 0;
+  }
+
+  .subtitle {
+    max-width: 680px;
+    opacity: 0.9;
+    line-height: 1.6;
+  }
+
+  .main-kpi {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 24px;
+    padding: 24px;
+    min-width: 220px;
+    text-align: center;
+  }
+
+  .main-kpi span {
+    display: block;
+    font-size: 15px;
+    opacity: 0.85;
+  }
+
+  .main-kpi strong {
+    display: block;
+    font-size: 56px;
+    margin-top: 8px;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 20px;
+    margin-top: 24px;
+  }
+
+  .panel,
+  .table-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+
+  h2 {
+    margin: 0 0 18px;
+    font-size: 20px;
+  }
+
+  .bar-row,
+  .chip-row,
+  .status-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 40px;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+    color: var(--muted);
+  }
+
+  .chip-row,
+  .status-row {
+    grid-template-columns: 1fr 40px;
+  }
+
+  .bar {
+    height: 10px;
+    background: #eef2f7;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .bar div {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 999px;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .status-row {
+    grid-template-columns: 14px 1fr 40px;
+  }
+
+  .table-panel {
+    margin-top: 24px;
+  }
+
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+
+  .table-header p {
+    color: var(--muted);
+    margin: 6px 0 0;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 10px;
+    min-width: 620px;
+  }
+
+  input,
+  select {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: white;
+    color: var(--text);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    background: #f8fafc;
+    padding: 14px;
+  }
+
+  td {
+    padding: 16px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .badge {
+    display: inline-flex;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--blue-soft);
+    color: var(--blue);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  @media (max-width: 900px) {
+    .hero,
+    .table-header {
+      flex-direction: column;
+    }
+
+    .summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .filters {
+      min-width: 0;
+      width: 100%;
+      grid-template-columns: 1fr;
+    }
+
+    table {
+      display: block;
+      overflow-x: auto;
+    }
+  }
+</style>
