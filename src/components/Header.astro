@@ -1,0 +1,27 @@
+---
+import { SITE_TITLE } from '../consts';
+
+const currentPath = Astro.url.pathname;
+
+const links = [
+  { href: '/', label: 'Ana Sayfa' },
+  { href: '/open-tasks', label: 'Açık İşler' },
+  { href: '/cases', label: 'Caseler' },
+];
+---
+
+<header class="app-header">
+	<a class="brand" href="/">
+		<span class="brand-mark">A</span>
+		<span>{SITE_TITLE}</span>
+	</a>
+	<nav class="app-nav" aria-label="Ana menü">
+		{
+			links.map((link) => (
+				<a class:list={[currentPath === link.href && 'active']} href={link.href}>
+					{link.label}
+				</a>
+			))
+		}
+	</nav>
+</header>

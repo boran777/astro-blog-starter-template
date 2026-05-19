@@ -1,0 +1,256 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+---
+
+<!doctype html>
+<html lang="tr">
+  <head>
+    <BaseHead
+      title="Caseler | Allianz Siber Güvenlik Operasyon Merkezi"
+      description="Allianz case kayıtları ve takip ekranı."
+    />
+  </head>
+  <body>
+    <Header />
+    <main class="page-shell">
+      <section class="page-hero">
+        <div>
+          <h1>Caseler</h1>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Yeni Case</h2>
+        <form class="form-grid" id="caseForm">
+          <div class="field span-2">
+            <label for="caseTitle">Case Başlığı</label>
+            <input id="caseTitle" required />
+          </div>
+          <div class="field">
+            <label for="caseCustomer">Üretici / Kaynak</label>
+            <input id="caseCustomer" required />
+          </div>
+          <div class="field">
+            <label for="caseOwner">Sorumlu</label>
+            <input id="caseOwner" required />
+          </div>
+          <div class="field">
+            <label for="caseStatus">Durum</label>
+            <select id="caseStatus">
+              <option>Açık</option>
+              <option>İncelemede</option>
+              <option>Beklemede</option>
+              <option>Kapalı</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="casePriority">Öncelik</label>
+            <select id="casePriority">
+              <option>Orta</option>
+              <option>Yüksek</option>
+              <option>Düşük</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="caseOpenedDate">Açılış Tarihi</label>
+            <input id="caseOpenedDate" type="date" />
+          </div>
+          <div class="field span-6">
+            <label for="caseSummary">Özet</label>
+            <textarea id="caseSummary" placeholder="Case kapsamı, mevcut durum ve beklenen aksiyon"></textarea>
+          </div>
+          <div class="field span-6">
+            <button class="button" type="submit">Case Kaydet</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" style="margin-top: 20px;">
+        <h2>Case Listesi</h2>
+        <div class="table-tools">
+          <input id="caseSearch" placeholder="Ara..." />
+          <select id="caseOwnerFilter"></select>
+          <select id="caseStatusFilter"></select>
+          <select id="casePriorityFilter"></select>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Case</th>
+                <th>Üretici / Kaynak</th>
+                <th>Sorumlu</th>
+                <th>Durum</th>
+                <th>Öncelik</th>
+                <th>Açılış</th>
+                <th>Aksiyon</th>
+              </tr>
+            </thead>
+            <tbody id="caseBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      let cases = [];
+
+      const escapeHtml = (value) =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+
+      const pillClass = (value) => {
+        if (value === "Kapalı") return "green";
+        if (value === "Yüksek") return "red";
+        if (value === "İncelemede" || value === "Orta") return "amber";
+        return "blue";
+      };
+
+      const formatDate = (value) =>
+        value ? new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(new Date(value)) : "-";
+
+      function setSelectOptions(selectId, label, values) {
+        const select = document.getElementById(selectId);
+        const current = select.value;
+        select.innerHTML = `<option value="">${label}</option>`;
+        [...new Set(values.filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, "tr"))
+          .forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+          });
+        select.value = current;
+      }
+
+      function renderFilters() {
+        setSelectOptions("caseOwnerFilter", "Tüm Sorumlular", cases.map((item) => item.owner));
+        setSelectOptions("caseStatusFilter", "Tüm Durumlar", cases.map((item) => item.status));
+        setSelectOptions("casePriorityFilter", "Tüm Öncelikler", cases.map((item) => item.priority));
+      }
+
+      function filteredCases() {
+        const search = document.getElementById("caseSearch").value.toLocaleLowerCase("tr");
+        const owner = document.getElementById("caseOwnerFilter").value;
+        const status = document.getElementById("caseStatusFilter").value;
+        const priority = document.getElementById("casePriorityFilter").value;
+
+        return cases.filter((item) => {
+          const text = `${item.title} ${item.customer} ${item.owner} ${item.status} ${item.priority} ${item.summary}`
+            .toLocaleLowerCase("tr");
+          return (
+            text.includes(search) &&
+            (!owner || item.owner === owner) &&
+            (!status || item.status === status) &&
+            (!priority || item.priority === priority)
+          );
+        });
+      }
+
+      function renderCases() {
+        const body = document.getElementById("caseBody");
+        const rows = filteredCases();
+
+        if (!rows.length) {
+          body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Gösterilecek case bulunamadı.</div></td></tr>';
+          return;
+        }
+
+        body.innerHTML = rows
+          .map(
+            (item) => `
+              <tr>
+                <td>
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <p class="record-meta">${escapeHtml(item.summary || "Özet girilmemiş.")}</p>
+                </td>
+                <td>${escapeHtml(item.customer)}</td>
+                <td>${escapeHtml(item.owner)}</td>
+                <td><span class="pill ${pillClass(item.status)}">${escapeHtml(item.status)}</span></td>
+                <td><span class="pill ${pillClass(item.priority)}">${escapeHtml(item.priority)}</span></td>
+                <td>${formatDate(item.opened_date)}</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="button secondary" data-action="close" data-id="${item.id}">Kapat</button>
+                    <button class="button danger" data-action="delete" data-id="${item.id}">Sil</button>
+                  </div>
+                </td>
+              </tr>
+            `,
+          )
+          .join("");
+      }
+
+      async function loadCases() {
+        const response = await fetch("/api/cases");
+        if (!response.ok) throw new Error("Caseler alınamadı.");
+        cases = await response.json();
+        renderFilters();
+        renderCases();
+      }
+
+      async function createCase(event) {
+        event.preventDefault();
+        const payload = {
+          title: document.getElementById("caseTitle").value.trim(),
+          customer: document.getElementById("caseCustomer").value.trim(),
+          owner: document.getElementById("caseOwner").value.trim(),
+          status: document.getElementById("caseStatus").value,
+          priority: document.getElementById("casePriority").value,
+          opened_date: document.getElementById("caseOpenedDate").value,
+          summary: document.getElementById("caseSummary").value.trim(),
+        };
+        const response = await fetch("/api/cases", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error("Case kaydedilemedi.");
+        event.target.reset();
+        await loadCases();
+      }
+
+      async function updateCase(id, patch) {
+        const current = cases.find((item) => String(item.id) === String(id));
+        if (!current) return;
+        const response = await fetch(`/api/cases/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...current, ...patch }),
+        });
+        if (!response.ok) throw new Error("Case güncellenemedi.");
+        await loadCases();
+      }
+
+      async function deleteCase(id) {
+        if (!confirm("Bu case silinsin mi?")) return;
+        const response = await fetch(`/api/cases/${id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error("Case silinemedi.");
+        await loadCases();
+      }
+
+      document.getElementById("caseForm").addEventListener("submit", createCase);
+      ["caseSearch", "caseOwnerFilter", "caseStatusFilter", "casePriorityFilter"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", renderCases);
+      });
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        if (button.dataset.action === "close") updateCase(button.dataset.id, { status: "Kapalı" }).catch(console.error);
+        if (button.dataset.action === "delete") deleteCase(button.dataset.id).catch(console.error);
+      });
+
+      loadCases().catch((error) => {
+        document.getElementById("caseBody").innerHTML =
+          '<tr><td colspan="7"><div class="empty-state">Veri yüklenemedi. D1 şemasını kontrol edin.</div></td></tr>';
+        console.error(error);
+      });
+    </script>
+  </body>
+</html>

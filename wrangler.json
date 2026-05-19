@@ -1,0 +1,43 @@
+{
+  "name": "allianz-operations-tracker",
+  "account_id": "13942365d8141465b5374edbe4204947",
+  "compatibility_date": "2025-10-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./worker/index.js",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "triggers": {
+    "crons": ["0 15 * * *"]
+  },
+  "vars": {
+    "REPORT_FROM": "reports@mail.kocsistem.cftenant.com",
+    "REPORT_TO": "boran.kirisoglu@kocsistem.com.tr"
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "allianz",
+      "database_id": "f4816b4b-bd44-43e1-b3dd-4a8f3a5fa33d"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "SESSION"
+    }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "remote": true
+    }
+  ]
+}

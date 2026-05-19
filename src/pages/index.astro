@@ -1,0 +1,137 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+---
+
+<!doctype html>
+<html lang="tr">
+  <head>
+    <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+  </head>
+  <body>
+    <Header />
+    <main class="page-shell">
+      <section class="page-hero">
+        <div>
+          <h1>Operasyon Özeti</h1>
+        </div>
+        <div class="hero-actions">
+          <a class="button" href="/open-tasks">Açık İşler</a>
+          <a class="button secondary" href="/cases">Caseler</a>
+        </div>
+      </section>
+
+      <section class="grid stats-grid" aria-label="Operasyon istatistikleri">
+        <article class="card">
+          <p class="stat-label">Toplam Açık İş</p>
+          <p class="stat-value" id="openTaskCount">0</p>
+          <p class="stat-note">Tamamlanmamış iş adedi</p>
+        </article>
+        <article class="card">
+          <p class="stat-label">Blokajdaki İş</p>
+          <p class="stat-value" id="blockedTaskCount">0</p>
+          <p class="stat-note">Acil takip gerektirir</p>
+        </article>
+        <article class="card">
+          <p class="stat-label">Aktif Case</p>
+          <p class="stat-value" id="activeCaseCount">0</p>
+          <p class="stat-note">Kapalı olmayan case sayısı</p>
+        </article>
+        <article class="card">
+          <p class="stat-label">Yüksek Öncelik</p>
+          <p class="stat-value" id="highPriorityCount">0</p>
+          <p class="stat-note">İş ve case toplamı</p>
+        </article>
+      </section>
+
+      <section class="grid two-column" style="margin-top: 20px;">
+        <div class="panel">
+          <h2>Üretici Bazlı Açık İş</h2>
+          <div class="bar-list" id="producerSummary">
+            <div class="empty-state">Veri yükleniyor.</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Son Güncellemeler</h2>
+          <div class="record-list" id="recentUpdates">
+            <div class="empty-state">Veri yükleniyor.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const formatDate = (value) =>
+        value ? new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "-";
+
+      function setText(id, value) {
+        document.getElementById(id).textContent = value;
+      }
+
+      function renderBars(items) {
+        const container = document.getElementById("producerSummary");
+        if (!items.length) {
+          container.innerHTML = '<div class="empty-state">Açık iş bulunmuyor.</div>';
+          return;
+        }
+
+        const max = Math.max(...items.map((item) => item.count), 1);
+        container.innerHTML = items
+          .map(
+            (item) => `
+              <div class="bar-row">
+                <span title="${item.name}">${item.name}</span>
+                <div class="bar"><span style="width:${Math.max((item.count / max) * 100, 8)}%"></span></div>
+                <strong>${item.count}</strong>
+              </div>
+            `,
+          )
+          .join("");
+      }
+
+      function renderUpdates(items) {
+        const container = document.getElementById("recentUpdates");
+        if (!items.length) {
+          container.innerHTML = '<div class="empty-state">Henüz güncelleme yok.</div>';
+          return;
+        }
+
+        container.innerHTML = items
+          .map(
+            (item) => `
+              <article class="record-item">
+                <p class="record-title">${item.task_title}</p>
+                <p class="record-meta">${item.update_text}</p>
+                <p class="record-meta">${formatDate(item.created_at)}</p>
+              </article>
+            `,
+          )
+          .join("");
+      }
+
+      async function loadDashboard() {
+        try {
+          const response = await fetch("/api/summary");
+          if (!response.ok) throw new Error("Özet verisi alınamadı.");
+          const summary = await response.json();
+
+          setText("openTaskCount", summary.openTasks);
+          setText("blockedTaskCount", summary.blockedTasks);
+          setText("activeCaseCount", summary.activeCases);
+          setText("highPriorityCount", summary.highPriority);
+          renderBars(summary.producerSummary);
+          renderUpdates(summary.recentUpdates);
+        } catch (error) {
+          document.getElementById("producerSummary").innerHTML =
+            '<div class="empty-state">Veri yüklenemedi. D1 bağlantısını ve migration durumunu kontrol edin.</div>';
+          document.getElementById("recentUpdates").innerHTML =
+            '<div class="empty-state">Güncellemeler alınamadı.</div>';
+          console.error(error);
+        }
+      }
+
+      loadDashboard();
+    </script>
+  </body>
+</html>

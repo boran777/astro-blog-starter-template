@@ -1,0 +1,27 @@
+{
+	"name": "allianz-operations-tracker",
+	"description": "Allianz operasyon işleri ve case takip ekranı.",
+	"dependencies": {
+		"@astrojs/cloudflare": "12.6.12",
+		"astro": "5.16.9",
+		"typescript": "5.9.3"
+	},
+	"devDependencies": {
+		"@types/node": "^25.9.0",
+		"wrangler": "4.56.0"
+	},
+	"engines": {
+		"node": ">=22"
+	},
+	"private": true,
+	"scripts": {
+		"astro": "astro",
+		"build": "astro build",
+		"cf-typegen": "wrangler types",
+		"check": "astro build && tsc && wrangler deploy --dry-run",
+		"deploy": "wrangler deploy",
+		"dev": "astro dev",
+		"preview": "astro build && wrangler dev"
+	},
+	"type": "module"
+}

@@ -1,0 +1,402 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+---
+
+<!doctype html>
+<html lang="tr">
+  <head>
+    <BaseHead
+      title="Açık İşler | Allianz Siber Güvenlik Operasyon Merkezi"
+      description="Allianz açık iş kayıtları, detayları ve güncelleme geçmişi."
+    />
+  </head>
+  <body>
+    <Header />
+    <main class="page-shell">
+      <section class="page-hero">
+        <div>
+          <h1>Açık İşler</h1>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Yeni İş</h2>
+        <form class="form-grid" id="taskForm">
+          <div class="field">
+            <label for="producerInput">Üretici</label>
+            <input id="producerInput" required />
+          </div>
+          <div class="field span-2">
+            <label for="titleInput">İş</label>
+            <input id="titleInput" required />
+          </div>
+          <div class="field">
+            <label for="ownerInput">Sorumlu</label>
+            <input id="ownerInput" required />
+          </div>
+          <div class="field">
+            <label for="statusInput">Durum</label>
+            <select id="statusInput">
+              <option>Beklemede</option>
+              <option>Üzerinde Çalışılıyor</option>
+              <option>Blokaj</option>
+              <option>Tamamlandı</option>
+              <option>İptal Edildi</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="priorityInput">Öncelik</label>
+            <select id="priorityInput">
+              <option>Orta</option>
+              <option>Yüksek</option>
+              <option>Düşük</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="dateInput">Hedef Tarih</label>
+            <input id="dateInput" type="date" />
+          </div>
+          <div class="field span-3">
+            <label for="detailInput">Detay</label>
+            <textarea id="detailInput" placeholder="İşin kapsamı, beklenen çıktı veya önemli notlar"></textarea>
+          </div>
+          <div class="field span-3">
+            <label for="updateInput">İlk Güncelleme</label>
+            <textarea id="updateInput" placeholder="Bu iş açılırken kayda geçecek ilk güncelleme"></textarea>
+          </div>
+          <div class="field span-6">
+            <button class="button" type="submit">İşi Kaydet</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="grid two-column tasks-workspace" style="margin-top: 20px;">
+        <div class="panel">
+          <h2>İş Listesi</h2>
+          <div class="table-tools">
+            <input id="searchInput" placeholder="Ara..." />
+            <select id="producerFilter"></select>
+            <select id="ownerFilter"></select>
+            <select id="statusFilter"></select>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Üretici</th>
+                  <th>İş</th>
+                  <th>Sorumlu</th>
+                  <th>Durum</th>
+                  <th>Öncelik</th>
+                  <th>Kayıt Tarihi</th>
+                  <th>Aksiyon</th>
+                </tr>
+              </thead>
+              <tbody id="taskBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <script>
+      let tasks = [];
+      let selectedTaskId = null;
+
+      const statusOptions = ["Beklemede", "Üzerinde Çalışılıyor", "Blokaj", "Tamamlandı", "İptal Edildi"];
+      const priorityOptions = ["Düşük", "Orta", "Yüksek"];
+
+      const escapeHtml = (value) =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+
+      const pillClass = (value) => {
+        if (value === "Tamamlandı") return "green";
+        if (value === "Blokaj" || value === "Yüksek") return "red";
+        if (value === "Üzerinde Çalışılıyor" || value === "Orta") return "amber";
+        return "blue";
+      };
+
+      const formatDate = (value) =>
+        value ? new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(new Date(value)) : "-";
+
+      function taskById(id) {
+        return tasks.find((task) => String(task.id) === String(id));
+      }
+
+      function latestActivityTime(task) {
+        const updateTime = task.updates?.[0]?.created_at || "";
+        const date = updateTime || task.updated_at || task.created_at || "";
+        return date ? new Date(date).getTime() : 0;
+      }
+
+      function setSelectOptions(selectId, label, values) {
+        const select = document.getElementById(selectId);
+        const current = select.value;
+        select.innerHTML = `<option value="">${label}</option>`;
+        [...new Set(values.filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, "tr"))
+          .forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+          });
+        select.value = current;
+      }
+
+      function setStatusOptions(values) {
+        const select = document.getElementById("statusFilter");
+        const current = select.value || "__open";
+        select.innerHTML = `
+          <option value="__open">Açık İşler</option>
+          <option value="">Tüm İşler</option>
+        `;
+        [...new Set(values.filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, "tr"))
+          .forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+          });
+        select.value = [...select.options].some((option) => option.value === current) ? current : "__open";
+      }
+
+      function renderFilters() {
+        setSelectOptions("producerFilter", "Tüm Üreticiler", tasks.map((task) => task.producer));
+        setSelectOptions("ownerFilter", "Tüm Sorumlular", tasks.map((task) => task.owner));
+        setStatusOptions(tasks.map((task) => task.status));
+      }
+
+      function filteredTasks() {
+        const search = document.getElementById("searchInput").value.toLocaleLowerCase("tr");
+        const producer = document.getElementById("producerFilter").value;
+        const owner = document.getElementById("ownerFilter").value;
+        const status = document.getElementById("statusFilter").value;
+
+        return tasks
+          .filter((task) => {
+            const text = `${task.producer} ${task.title} ${task.owner} ${task.status} ${task.priority} ${task.detail}`
+              .toLocaleLowerCase("tr");
+            return (
+              text.includes(search) &&
+              (!producer || task.producer === producer) &&
+              (!owner || task.owner === owner) &&
+              (status === "__open" ? task.status !== "Tamamlandı" && task.status !== "İptal Edildi" : !status || task.status === status)
+            );
+          })
+          .sort((a, b) => latestActivityTime(b) - latestActivityTime(a) || Number(b.id) - Number(a.id));
+      }
+
+      function expandedTaskRow(task) {
+        if (String(task.id) !== String(selectedTaskId)) return "";
+
+        const updates = task.updates || [];
+        return `
+          <tr class="expanded-row">
+            <td colspan="7">
+              <div class="inline-detail">
+                <form class="task-detail" id="editTaskForm">
+                  <div class="field">
+                    <label for="editProducer">Üretici</label>
+                    <input id="editProducer" value="${escapeHtml(task.producer)}" />
+                  </div>
+                  <div class="field">
+                    <label for="editOwner">Sorumlu</label>
+                    <input id="editOwner" value="${escapeHtml(task.owner)}" />
+                  </div>
+                  <div class="field">
+                    <label for="editStatus">Durum</label>
+                    <select id="editStatus">
+                      ${statusOptions.map((item) => `<option ${item === task.status ? "selected" : ""}>${item}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="editPriority">Öncelik</label>
+                    <select id="editPriority">
+                      ${priorityOptions.map((item) => `<option ${item === task.priority ? "selected" : ""}>${item}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="field span-3">
+                    <label for="editDetail">Detay</label>
+                    <textarea id="editDetail">${escapeHtml(task.detail || "")}</textarea>
+                  </div>
+                  <div class="field span-3">
+                    <label for="newUpdate">Yeni Güncelleme</label>
+                    <textarea id="newUpdate" placeholder="Bu işle ilgili yeni gelişmeyi yazın"></textarea>
+                  </div>
+                  <div class="field span-6">
+                    <button class="button" type="submit">Değişiklikleri Kaydet</button>
+                  </div>
+                </form>
+                <div>
+                  <h3>Güncelleme Geçmişi</h3>
+                  <div class="history-list">
+                    ${
+                      updates.length
+                        ? updates
+                            .map(
+                              (update) => `
+                                <article class="history-item">
+                                  <p>${escapeHtml(update.update_text)}</p>
+                                  <p class="record-meta">${escapeHtml(update.action || "Güncelleme")} · ${new Date(update.created_at).toLocaleString("tr-TR")}</p>
+                                </article>
+                              `,
+                            )
+                            .join("")
+                        : '<div class="empty-state">Bu iş için henüz güncelleme yok.</div>'
+                    }
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      function renderTable() {
+        const body = document.getElementById("taskBody");
+        const rows = filteredTasks();
+
+        if (!rows.length) {
+          body.innerHTML = `
+            <tr>
+              <td colspan="7"><div class="empty-state">Gösterilecek iş bulunamadı.</div></td>
+            </tr>
+          `;
+          return;
+        }
+
+        body.innerHTML = rows
+          .map(
+            (task) => `
+              <tr>
+                <td>${escapeHtml(task.producer)}</td>
+                <td>
+                  <strong>${escapeHtml(task.title)}</strong>
+                  <p class="record-meta">${escapeHtml(task.detail || "Detay girilmemiş.")}</p>
+                </td>
+                <td>${escapeHtml(task.owner)}</td>
+                <td><span class="pill ${pillClass(task.status)}">${escapeHtml(task.status)}</span></td>
+                <td><span class="pill ${pillClass(task.priority)}">${escapeHtml(task.priority)}</span></td>
+                <td>${formatDate(task.created_at)}</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="button secondary" data-action="select" data-id="${task.id}">Detay</button>
+                    <button class="button danger" data-action="delete" data-id="${task.id}">Sil</button>
+                  </div>
+                </td>
+              </tr>
+              ${expandedTaskRow(task)}
+            `,
+          )
+          .join("");
+      }
+
+      function renderDetail() {
+        renderTable();
+      }
+
+      async function loadTasks() {
+        const response = await fetch("/api/tasks");
+        if (!response.ok) throw new Error("İşler alınamadı.");
+        tasks = await response.json();
+        renderFilters();
+        renderTable();
+        if (selectedTaskId && !taskById(selectedTaskId)) selectedTaskId = null;
+        renderDetail();
+      }
+
+      async function createTask(event) {
+        event.preventDefault();
+        const payload = {
+          producer: document.getElementById("producerInput").value.trim(),
+          title: document.getElementById("titleInput").value.trim(),
+          owner: document.getElementById("ownerInput").value.trim(),
+          status: document.getElementById("statusInput").value,
+          priority: document.getElementById("priorityInput").value,
+          due_date: document.getElementById("dateInput").value,
+          detail: document.getElementById("detailInput").value.trim(),
+          update_text: document.getElementById("updateInput").value.trim(),
+        };
+
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error("İş kaydedilemedi.");
+        event.target.reset();
+        await loadTasks();
+      }
+
+      async function updateSelectedTask(event) {
+        event.preventDefault();
+        const task = taskById(selectedTaskId);
+        if (!task) return;
+
+        const payload = {
+          title: task.title,
+          producer: document.getElementById("editProducer").value.trim(),
+          owner: document.getElementById("editOwner").value.trim(),
+          status: document.getElementById("editStatus").value,
+          priority: document.getElementById("editPriority").value,
+          due_date: task.due_date || "",
+          detail: document.getElementById("editDetail").value.trim(),
+          update_text: document.getElementById("newUpdate").value.trim(),
+        };
+
+        const response = await fetch(`/api/tasks/${task.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error("İş güncellenemedi.");
+        await loadTasks();
+      }
+
+      async function deleteTask(id) {
+        if (!confirm("Bu iş ve güncelleme geçmişi silinsin mi?")) return;
+        const response = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error("İş silinemedi.");
+        if (String(selectedTaskId) === String(id)) selectedTaskId = null;
+        await loadTasks();
+      }
+
+      document.getElementById("taskForm").addEventListener("submit", createTask);
+      ["searchInput", "producerFilter", "ownerFilter", "statusFilter"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", renderTable);
+      });
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        if (button.dataset.action === "select") {
+          selectedTaskId = String(selectedTaskId) === String(button.dataset.id) ? null : button.dataset.id;
+          renderDetail();
+        }
+        if (button.dataset.action === "delete") {
+          deleteTask(button.dataset.id).catch(console.error);
+        }
+      });
+      document.addEventListener("submit", (event) => {
+        if (event.target.id === "editTaskForm") {
+          updateSelectedTask(event).catch(console.error);
+        }
+      });
+
+      loadTasks().catch((error) => {
+        document.getElementById("taskBody").innerHTML = `
+          <tr><td colspan="7"><div class="empty-state">Veri yüklenemedi. D1 şemasını kontrol edin.</div></td></tr>
+        `;
+        console.error(error);
+      });
+    </script>
+  </body>
+</html>
