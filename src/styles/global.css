@@ -305,6 +305,16 @@ select {
   padding: 0 12px;
 }
 
+select[multiple] {
+  min-height: 128px;
+  padding: 6px;
+}
+
+select[multiple] option {
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
 textarea {
   min-height: 78px;
   padding: 12px;
@@ -393,6 +403,26 @@ tbody tr:hover {
 .pill.red {
   background: var(--red-soft);
   color: var(--red);
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--blue-dark);
+  background: var(--blue-soft);
+  border: 1px solid #c8d8ed;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .muted {
