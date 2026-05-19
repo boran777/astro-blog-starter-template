@@ -282,10 +282,6 @@ h3 {
   grid-column: span 6;
 }
 
-.field.status-field {
-  grid-column: span 2;
-}
-
 label {
   color: var(--muted);
   font-size: 13px;
@@ -309,21 +305,28 @@ select {
   padding: 0 12px;
 }
 
-.owner-select-group {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+.owner-multiselect {
+  min-height: 96px;
+  padding: 6px;
 }
 
-.owner-select-group select,
-.status-field select {
+.owner-multiselect option {
+  min-height: 28px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  line-height: 1.25;
+}
+
+select {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 textarea {
   min-height: 78px;
+  height: auto;
   padding: 12px;
+  overflow: hidden;
   resize: vertical;
 }
 
@@ -602,6 +605,10 @@ tbody tr:hover {
   align-content: start;
 }
 
+.inline-detail textarea {
+  min-height: 120px;
+}
+
 .inline-detail h3 {
   margin: 0 0 10px;
   font-size: 16px;
@@ -679,8 +686,7 @@ tbody tr:hover {
 
   .field.span-2,
   .field.span-3,
-  .field.span-6,
-  .field.status-field {
+  .field.span-6 {
     grid-column: span 2;
   }
 }
@@ -730,13 +736,8 @@ tbody tr:hover {
 
   .field.span-2,
   .field.span-3,
-  .field.span-6,
-  .field.status-field {
+  .field.span-6 {
     grid-column: span 1;
-  }
-
-  .owner-select-group {
-    grid-template-columns: 1fr;
   }
 
   .hero-actions {

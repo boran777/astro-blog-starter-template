@@ -23,19 +23,15 @@ import Header from '../components/Header.astro';
       <section class="panel">
         <h2>Yeni İş</h2>
         <form class="form-grid" id="taskForm">
-          <div class="field">
-            <label for="producerInput">Üretici</label>
-            <select id="producerInput" required></select>
-          </div>
           <div class="field span-2">
             <label for="titleInput">İş</label>
             <input id="titleInput" required />
           </div>
-          <div class="field span-2">
-            <label for="ownerInput">Sorumlu</label>
-            <div class="owner-select-group" id="ownerInput"></div>
+          <div class="field">
+            <label for="producerInput">Üretici</label>
+            <select id="producerInput" required></select>
           </div>
-          <div class="field status-field">
+          <div class="field">
             <label for="statusInput">Durum</label>
             <select id="statusInput">
               <option>Beklemede</option>
@@ -57,11 +53,15 @@ import Header from '../components/Header.astro';
             <label for="dateInput">Hedef Tarih</label>
             <input id="dateInput" type="date" />
           </div>
-          <div class="field span-3">
+          <div class="field span-2">
+            <label for="ownerInput">Sorumlu</label>
+            <select id="ownerInput" class="owner-multiselect" multiple required size="4"></select>
+          </div>
+          <div class="field span-2">
             <label for="detailInput">Detay</label>
             <textarea id="detailInput" placeholder="İşin kapsamı, beklenen çıktı veya önemli notlar"></textarea>
           </div>
-          <div class="field span-3">
+          <div class="field span-2">
             <label for="updateInput">İlk Güncelleme</label>
             <textarea id="updateInput" placeholder="Bu iş açılırken kayda geçecek ilk güncelleme"></textarea>
           </div>
@@ -163,22 +163,14 @@ import Header from '../components/Header.astro';
       }
 
       function selectedOwners(containerId) {
-        return [...document.querySelectorAll(`#${containerId} select`)].map((select) => select.value).filter(Boolean);
+        return [...document.getElementById(containerId).selectedOptions].map((option) => option.value).filter(Boolean);
       }
 
-      function renderOwnerSelects(selected = []) {
-        const values = [...selected, "", "", "", ""].slice(0, 4);
-        return values
-          .map(
-            (selectedOwner, index) => `
-              <select aria-label="Sorumlu ${index + 1}">
-                <option value="">${index === 0 ? "Sorumlu seç" : "Ek sorumlu"}</option>
-                ${ownerOptions
-                  .map((owner) => `<option value="${escapeHtml(owner)}" ${owner === selectedOwner ? "selected" : ""}>${escapeHtml(owner)}</option>`)
-                  .join("")}
-              </select>
-            `,
-          )
+      function renderMultiOptions(selectId, values, selected = []) {
+        const select = document.getElementById(selectId);
+        const selectedSet = new Set(selected);
+        select.innerHTML = values
+          .map((value) => `<option value="${escapeHtml(value)}" ${selectedSet.has(value) ? "selected" : ""}>${escapeHtml(value)}</option>`)
           .join("");
       }
 
@@ -194,6 +186,15 @@ import Header from '../components/Header.astro';
         const owners = splitOwners(value);
         if (!owners.length) return "-";
         return `<div class="chip-list">${owners.map((owner) => `<span class="chip">${escapeHtml(owner)}</span>`).join("")}</div>`;
+      }
+
+      function autoResizeTextarea(textarea) {
+        textarea.style.height = "auto";
+        textarea.style.height = `${textarea.scrollHeight}px`;
+      }
+
+      function autoResizeTextareas(scope = document) {
+        scope.querySelectorAll("textarea").forEach(autoResizeTextarea);
       }
 
       function setSelectOptions(selectId, label, values) {
@@ -278,11 +279,13 @@ import Header from '../components/Header.astro';
                   </div>
                   <div class="field span-2">
                     <label for="editOwner">Sorumlu</label>
-                    <div class="owner-select-group" id="editOwner">
-                      ${renderOwnerSelects(splitOwners(task.owner))}
-                    </div>
+                    <select id="editOwner" class="owner-multiselect" multiple size="4">
+                      ${ownerOptions
+                        .map((owner) => `<option value="${escapeHtml(owner)}" ${splitOwners(task.owner).includes(owner) ? "selected" : ""}>${escapeHtml(owner)}</option>`)
+                        .join("")}
+                    </select>
                   </div>
-                  <div class="field status-field">
+                  <div class="field">
                     <label for="editStatus">Durum</label>
                     <select id="editStatus">
                       ${statusOptions.map((item) => `<option ${item === task.status ? "selected" : ""}>${item}</option>`).join("")}
@@ -372,6 +375,7 @@ import Header from '../components/Header.astro';
 
       function renderDetail() {
         renderTable();
+        autoResizeTextareas(document.getElementById("taskBody"));
       }
 
       async function loadTasks() {
@@ -379,7 +383,7 @@ import Header from '../components/Header.astro';
         if (!response.ok) throw new Error("İşler alınamadı.");
         tasks = await response.json();
         renderFixedOptions("producerInput", producerOptions);
-        document.getElementById("ownerInput").innerHTML = renderOwnerSelects([]);
+        renderMultiOptions("ownerInput", ownerOptions);
         renderFilters();
         renderTable();
         if (selectedTaskId && !taskById(selectedTaskId)) selectedTaskId = null;
@@ -411,6 +415,7 @@ import Header from '../components/Header.astro';
         });
         if (!response.ok) throw new Error("İş kaydedilemedi.");
         event.target.reset();
+        autoResizeTextareas(event.target);
         await loadTasks();
       }
 
@@ -470,6 +475,11 @@ import Header from '../components/Header.astro';
       document.addEventListener("submit", (event) => {
         if (event.target.id === "editTaskForm") {
           updateSelectedTask(event).catch(console.error);
+        }
+      });
+      document.addEventListener("input", (event) => {
+        if (event.target instanceof HTMLTextAreaElement) {
+          autoResizeTextarea(event.target);
         }
       });
 
