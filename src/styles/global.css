@@ -325,6 +325,54 @@ select[multiple] option {
   border-radius: 8px;
 }
 
+.owner-picker {
+  position: relative;
+}
+
+.owner-picker summary {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  overflow: hidden;
+  color: var(--text);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+  list-style: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.owner-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.owner-picker summary::after {
+  color: var(--muted);
+  content: "Seç";
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.owner-picker[open] summary {
+  border-color: var(--blue);
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.owner-picker .option-grid {
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
 .option-grid.compact {
   grid-column: span 2;
   grid-template-columns: repeat(3, minmax(0, 1fr));

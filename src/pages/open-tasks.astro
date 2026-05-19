@@ -33,7 +33,10 @@ import Header from '../components/Header.astro';
           </div>
           <div class="field">
             <label for="ownerInput">Sorumlu</label>
-            <div class="option-grid" id="ownerInput"></div>
+            <details class="owner-picker">
+              <summary id="ownerInputSummary">Sorumlu seç</summary>
+              <div class="option-grid" id="ownerInput"></div>
+            </details>
           </div>
           <div class="field">
             <label for="statusInput">Durum</label>
@@ -180,6 +183,18 @@ import Header from '../components/Header.astro';
           .join("");
       }
 
+      function ownerSummaryText(owners) {
+        if (!owners.length) return "Sorumlu seç";
+        if (owners.length <= 2) return owners.join(", ");
+        return `${owners.slice(0, 2).join(", ")} +${owners.length - 2}`;
+      }
+
+      function refreshOwnerSummary(containerId) {
+        const picker = document.getElementById(containerId)?.closest(".owner-picker");
+        const summary = picker?.querySelector("summary");
+        if (summary) summary.textContent = ownerSummaryText(selectedOwners(containerId));
+      }
+
       function renderFixedOptions(selectId, values, { selected = [], placeholder = "" } = {}) {
         const select = document.getElementById(selectId);
         const selectedSet = new Set(selected);
@@ -276,9 +291,12 @@ import Header from '../components/Header.astro';
                   </div>
                   <div class="field">
                     <label for="editOwner">Sorumlu</label>
-                    <div class="option-grid compact" id="editOwner">
-                      ${renderOwnerOptions(splitOwners(task.owner), `editOwner-${task.id}`)}
-                    </div>
+                    <details class="owner-picker">
+                      <summary>${escapeHtml(ownerSummaryText(splitOwners(task.owner)))}</summary>
+                      <div class="option-grid compact" id="editOwner">
+                        ${renderOwnerOptions(splitOwners(task.owner), `editOwner-${task.id}`)}
+                      </div>
+                    </details>
                   </div>
                   <div class="field">
                     <label for="editStatus">Durum</label>
@@ -378,6 +396,7 @@ import Header from '../components/Header.astro';
         tasks = await response.json();
         renderFixedOptions("producerInput", producerOptions);
         document.getElementById("ownerInput").innerHTML = renderOwnerOptions([], "ownerInput");
+        refreshOwnerSummary("ownerInput");
         renderFilters();
         renderTable();
         if (selectedTaskId && !taskById(selectedTaskId)) selectedTaskId = null;
@@ -464,6 +483,10 @@ import Header from '../components/Header.astro';
         if (button.dataset.action === "delete") {
           deleteTask(button.dataset.id).catch(console.error);
         }
+      });
+      document.addEventListener("change", (event) => {
+        const ownerContainer = event.target.closest("#ownerInput, #editOwner");
+        if (ownerContainer) refreshOwnerSummary(ownerContainer.id);
       });
       document.addEventListener("submit", (event) => {
         if (event.target.id === "editTaskForm") {
