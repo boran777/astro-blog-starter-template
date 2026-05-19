@@ -12,21 +12,32 @@ export async function GET({ locals }: { locals: App.Locals }) {
     highPriorityTasks,
     highPriorityCases,
     producerSummary,
+    ownerSummary,
     recentUpdates,
   ] = await Promise.all([
-    db.prepare("SELECT COUNT(*) AS count FROM tasks WHERE status != 'Tamamlandı'").first<{ count: number }>(),
+    db.prepare("SELECT COUNT(*) AS count FROM tasks WHERE status NOT IN ('Tamamlandı', 'İptal Edildi')").first<{ count: number }>(),
     db.prepare("SELECT COUNT(*) AS count FROM tasks WHERE status = 'Blokaj'").first<{ count: number }>(),
     db.prepare("SELECT COUNT(*) AS count FROM cases WHERE status != 'Kapalı'").first<{ count: number }>(),
-    db.prepare("SELECT COUNT(*) AS count FROM tasks WHERE priority = 'Yüksek'").first<{ count: number }>(),
+    db.prepare("SELECT COUNT(*) AS count FROM tasks WHERE priority = 'Yüksek' AND status NOT IN ('Tamamlandı', 'İptal Edildi')").first<{ count: number }>(),
     db.prepare("SELECT COUNT(*) AS count FROM cases WHERE priority = 'Yüksek'").first<{ count: number }>(),
     db
       .prepare(`
         SELECT producer AS name, COUNT(*) AS count
         FROM tasks
-        WHERE status != 'Tamamlandı'
+        WHERE status NOT IN ('Tamamlandı', 'İptal Edildi')
         GROUP BY producer
         ORDER BY count DESC, producer ASC
         LIMIT 8
+      `)
+      .all<{ name: string; count: number }>(),
+    db
+      .prepare(`
+        SELECT owner AS name, COUNT(*) AS count
+        FROM tasks
+        WHERE status NOT IN ('Tamamlandı', 'İptal Edildi')
+        GROUP BY owner
+        ORDER BY count DESC, owner ASC
+        LIMIT 7
       `)
       .all<{ name: string; count: number }>(),
     db
@@ -49,6 +60,7 @@ export async function GET({ locals }: { locals: App.Locals }) {
     activeCases: activeCases?.count || 0,
     highPriority: (highPriorityTasks?.count || 0) + (highPriorityCases?.count || 0),
     producerSummary: producerSummary.results,
+    ownerSummary: ownerSummary.results,
     recentUpdates: recentUpdates.results,
   });
 }

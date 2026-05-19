@@ -29,11 +29,6 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
           <p class="stat-note">Tamamlanmamış iş adedi</p>
         </article>
         <article class="card">
-          <p class="stat-label">Blokajdaki İş</p>
-          <p class="stat-value" id="blockedTaskCount">0</p>
-          <p class="stat-note">Acil takip gerektirir</p>
-        </article>
-        <article class="card">
           <p class="stat-label">Aktif Case</p>
           <p class="stat-value" id="activeCaseCount">0</p>
           <p class="stat-note">Kapalı olmayan case sayısı</p>
@@ -43,9 +38,14 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
           <p class="stat-value" id="highPriorityCount">0</p>
           <p class="stat-note">İş ve case toplamı</p>
         </article>
+        <article class="card stat-secondary">
+          <p class="stat-label">Blokajdaki İş</p>
+          <p class="stat-value" id="blockedTaskCount">0</p>
+          <p class="stat-note">Sağda ikincil takip</p>
+        </article>
       </section>
 
-      <section class="grid two-column" style="margin-top: 20px;">
+      <section class="grid dashboard-grid" style="margin-top: 20px;">
         <div class="panel">
           <h2>Üretici Bazlı Açık İş</h2>
           <div class="bar-list" id="producerSummary">
@@ -53,17 +53,37 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
           </div>
         </div>
         <div class="panel">
+          <h2>Kişi Bazlı Açık İş</h2>
+          <div class="donut-layout">
+            <div class="donut-chart" id="ownerChart" aria-label="Kişi bazlı açık iş dağılımı"></div>
+            <div class="legend-list" id="ownerSummary">
+              <div class="empty-state">Veri yükleniyor.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top: 20px;">
           <h2>Son Güncellemeler</h2>
           <div class="record-list" id="recentUpdates">
             <div class="empty-state">Veri yükleniyor.</div>
           </div>
-        </div>
       </section>
     </main>
 
     <script>
       const formatDate = (value) =>
         value ? new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "-";
+
+      const chartColors = ["#0050a4", "#00a3a1", "#f5a623", "#d64545", "#6c63ff", "#3f8f46", "#8a5a2b"];
+
+      const escapeHtml = (value) =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
 
       function setText(id, value) {
         document.getElementById(id).textContent = value;
@@ -81,8 +101,43 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
           .map(
             (item) => `
               <div class="bar-row">
-                <span title="${item.name}">${item.name}</span>
+                <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
                 <div class="bar"><span style="width:${Math.max((item.count / max) * 100, 8)}%"></span></div>
+                <strong>${item.count}</strong>
+              </div>
+            `,
+          )
+          .join("");
+      }
+
+      function renderOwnerChart(items) {
+        const chart = document.getElementById("ownerChart");
+        const legend = document.getElementById("ownerSummary");
+        const total = items.reduce((sum, item) => sum + item.count, 0);
+
+        if (!items.length || !total) {
+          chart.style.background = "#edf1f7";
+          chart.innerHTML = "<span>0</span>";
+          legend.innerHTML = '<div class="empty-state">Açık iş bulunmuyor.</div>';
+          return;
+        }
+
+        let cursor = 0;
+        const slices = items.map((item, index) => {
+          const start = cursor;
+          const end = cursor + (item.count / total) * 100;
+          cursor = end;
+          return `${chartColors[index % chartColors.length]} ${start}% ${end}%`;
+        });
+
+        chart.style.background = `conic-gradient(${slices.join(", ")})`;
+        chart.innerHTML = `<span>${total}</span><small>Açık iş</small>`;
+        legend.innerHTML = items
+          .map(
+            (item, index) => `
+              <div class="legend-row">
+                <span class="legend-dot" style="background:${chartColors[index % chartColors.length]}"></span>
+                <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
                 <strong>${item.count}</strong>
               </div>
             `,
@@ -101,8 +156,8 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
           .map(
             (item) => `
               <article class="record-item">
-                <p class="record-title">${item.task_title}</p>
-                <p class="record-meta">${item.update_text}</p>
+                <p class="record-title">${escapeHtml(item.task_title)}</p>
+                <p class="record-meta">${escapeHtml(item.update_text)}</p>
                 <p class="record-meta">${formatDate(item.created_at)}</p>
               </article>
             `,
@@ -121,10 +176,13 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
           setText("activeCaseCount", summary.activeCases);
           setText("highPriorityCount", summary.highPriority);
           renderBars(summary.producerSummary);
+          renderOwnerChart(summary.ownerSummary);
           renderUpdates(summary.recentUpdates);
         } catch (error) {
           document.getElementById("producerSummary").innerHTML =
             '<div class="empty-state">Veri yüklenemedi. D1 bağlantısını ve migration durumunu kontrol edin.</div>';
+          document.getElementById("ownerSummary").innerHTML =
+            '<div class="empty-state">Kişi dağılımı alınamadı.</div>';
           document.getElementById("recentUpdates").innerHTML =
             '<div class="empty-state">Güncellemeler alınamadı.</div>';
           console.error(error);
