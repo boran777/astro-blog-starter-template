@@ -33,7 +33,7 @@ import Header from '../components/Header.astro';
           </div>
           <div class="field">
             <label for="ownerInput">Sorumlu</label>
-            <select id="ownerInput" multiple required size="5"></select>
+            <div class="option-grid" id="ownerInput"></div>
           </div>
           <div class="field">
             <label for="statusInput">Durum</label>
@@ -162,6 +162,24 @@ import Header from '../components/Header.astro';
         return [...document.getElementById(selectId).selectedOptions].map((option) => option.value);
       }
 
+      function selectedOwners(containerId) {
+        return [...document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)].map((input) => input.value);
+      }
+
+      function renderOwnerOptions(selected = [], groupName = "owners") {
+        const selectedSet = new Set(selected);
+        return ownerOptions
+          .map(
+            (owner) => `
+              <label class="option-pill">
+                <input type="checkbox" name="${groupName}" value="${escapeHtml(owner)}" ${selectedSet.has(owner) ? "checked" : ""} />
+                <span>${escapeHtml(owner)}</span>
+              </label>
+            `,
+          )
+          .join("");
+      }
+
       function renderFixedOptions(selectId, values, { selected = [], placeholder = "" } = {}) {
         const select = document.getElementById(selectId);
         const selectedSet = new Set(selected);
@@ -258,11 +276,9 @@ import Header from '../components/Header.astro';
                   </div>
                   <div class="field">
                     <label for="editOwner">Sorumlu</label>
-                    <select id="editOwner" multiple size="5">
-                      ${ownerOptions
-                        .map((item) => `<option ${splitOwners(task.owner).includes(item) ? "selected" : ""}>${escapeHtml(item)}</option>`)
-                        .join("")}
-                    </select>
+                    <div class="option-grid compact" id="editOwner">
+                      ${renderOwnerOptions(splitOwners(task.owner), `editOwner-${task.id}`)}
+                    </div>
                   </div>
                   <div class="field">
                     <label for="editStatus">Durum</label>
@@ -361,7 +377,7 @@ import Header from '../components/Header.astro';
         if (!response.ok) throw new Error("İşler alınamadı.");
         tasks = await response.json();
         renderFixedOptions("producerInput", producerOptions);
-        renderFixedOptions("ownerInput", ownerOptions);
+        document.getElementById("ownerInput").innerHTML = renderOwnerOptions([], "ownerInput");
         renderFilters();
         renderTable();
         if (selectedTaskId && !taskById(selectedTaskId)) selectedTaskId = null;
@@ -373,13 +389,18 @@ import Header from '../components/Header.astro';
         const payload = {
           producer: document.getElementById("producerInput").value,
           title: document.getElementById("titleInput").value.trim(),
-          owner: selectedValues("ownerInput").join(", "),
+          owner: selectedOwners("ownerInput").join(", "),
           status: document.getElementById("statusInput").value,
           priority: document.getElementById("priorityInput").value,
           due_date: document.getElementById("dateInput").value,
           detail: document.getElementById("detailInput").value.trim(),
           update_text: document.getElementById("updateInput").value.trim(),
         };
+
+        if (!payload.owner) {
+          alert("En az bir sorumlu seçin.");
+          return;
+        }
 
         const response = await fetch("/api/tasks", {
           method: "POST",
@@ -399,13 +420,18 @@ import Header from '../components/Header.astro';
         const payload = {
           title: task.title,
           producer: document.getElementById("editProducer").value,
-          owner: selectedValues("editOwner").join(", "),
+          owner: selectedOwners("editOwner").join(", "),
           status: document.getElementById("editStatus").value,
           priority: document.getElementById("editPriority").value,
           due_date: task.due_date || "",
           detail: document.getElementById("editDetail").value.trim(),
           update_text: document.getElementById("newUpdate").value.trim(),
         };
+
+        if (!payload.owner) {
+          alert("En az bir sorumlu seçin.");
+          return;
+        }
 
         const response = await fetch(`/api/tasks/${task.id}`, {
           method: "PUT",

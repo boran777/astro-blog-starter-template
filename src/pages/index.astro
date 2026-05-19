@@ -110,14 +110,14 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
           .join("");
       }
 
-      function renderOwnerChart(items) {
+      function renderOwnerChart(items, openTaskTotal) {
         const chart = document.getElementById("ownerChart");
         const legend = document.getElementById("ownerSummary");
-        const total = items.reduce((sum, item) => sum + item.count, 0);
+        const assignmentTotal = items.reduce((sum, item) => sum + item.count, 0);
 
-        if (!items.length || !total) {
+        if (!items.length || !assignmentTotal) {
           chart.style.background = "#edf1f7";
-          chart.innerHTML = "<span>0</span>";
+          chart.innerHTML = `<span>${openTaskTotal || 0}</span><small>Açık iş</small>`;
           legend.innerHTML = '<div class="empty-state">Açık iş bulunmuyor.</div>';
           return;
         }
@@ -125,13 +125,13 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
         let cursor = 0;
         const slices = items.map((item, index) => {
           const start = cursor;
-          const end = cursor + (item.count / total) * 100;
+          const end = cursor + (item.count / assignmentTotal) * 100;
           cursor = end;
           return `${chartColors[index % chartColors.length]} ${start}% ${end}%`;
         });
 
         chart.style.background = `conic-gradient(${slices.join(", ")})`;
-        chart.innerHTML = `<span>${total}</span><small>Açık iş</small>`;
+        chart.innerHTML = `<span>${openTaskTotal}</span><small>Açık iş</small>`;
         legend.innerHTML = items
           .map(
             (item, index) => `
@@ -176,7 +176,7 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
           setText("activeCaseCount", summary.activeCases);
           setText("highPriorityCount", summary.highPriority);
           renderBars(summary.producerSummary);
-          renderOwnerChart(summary.ownerSummary);
+          renderOwnerChart(summary.ownerSummary, summary.openTasks);
           renderUpdates(summary.recentUpdates);
         } catch (error) {
           document.getElementById("producerSummary").innerHTML =
