@@ -31,14 +31,11 @@ import Header from '../components/Header.astro';
             <label for="titleInput">İş</label>
             <input id="titleInput" required />
           </div>
-          <div class="field">
+          <div class="field span-2">
             <label for="ownerInput">Sorumlu</label>
-            <details class="owner-picker">
-              <summary id="ownerInputSummary">Sorumlu seç</summary>
-              <div class="option-grid" id="ownerInput"></div>
-            </details>
+            <div class="owner-select-group" id="ownerInput"></div>
           </div>
-          <div class="field">
+          <div class="field status-field">
             <label for="statusInput">Durum</label>
             <select id="statusInput">
               <option>Beklemede</option>
@@ -166,33 +163,23 @@ import Header from '../components/Header.astro';
       }
 
       function selectedOwners(containerId) {
-        return [...document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)].map((input) => input.value);
+        return [...document.querySelectorAll(`#${containerId} select`)].map((select) => select.value).filter(Boolean);
       }
 
-      function renderOwnerOptions(selected = [], groupName = "owners") {
-        const selectedSet = new Set(selected);
-        return ownerOptions
+      function renderOwnerSelects(selected = []) {
+        const values = [...selected, "", "", "", ""].slice(0, 4);
+        return values
           .map(
-            (owner) => `
-              <label class="option-pill">
-                <input type="checkbox" name="${groupName}" value="${escapeHtml(owner)}" ${selectedSet.has(owner) ? "checked" : ""} />
-                <span>${escapeHtml(owner)}</span>
-              </label>
+            (selectedOwner, index) => `
+              <select aria-label="Sorumlu ${index + 1}">
+                <option value="">${index === 0 ? "Sorumlu seç" : "Ek sorumlu"}</option>
+                ${ownerOptions
+                  .map((owner) => `<option value="${escapeHtml(owner)}" ${owner === selectedOwner ? "selected" : ""}>${escapeHtml(owner)}</option>`)
+                  .join("")}
+              </select>
             `,
           )
           .join("");
-      }
-
-      function ownerSummaryText(owners) {
-        if (!owners.length) return "Sorumlu seç";
-        if (owners.length <= 2) return owners.join(", ");
-        return `${owners.slice(0, 2).join(", ")} +${owners.length - 2}`;
-      }
-
-      function refreshOwnerSummary(containerId) {
-        const picker = document.getElementById(containerId)?.closest(".owner-picker");
-        const summary = picker?.querySelector("summary");
-        if (summary) summary.textContent = ownerSummaryText(selectedOwners(containerId));
       }
 
       function renderFixedOptions(selectId, values, { selected = [], placeholder = "" } = {}) {
@@ -289,16 +276,13 @@ import Header from '../components/Header.astro';
                       ${producerOptions.map((item) => `<option ${item === task.producer ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
                     </select>
                   </div>
-                  <div class="field">
+                  <div class="field span-2">
                     <label for="editOwner">Sorumlu</label>
-                    <details class="owner-picker">
-                      <summary>${escapeHtml(ownerSummaryText(splitOwners(task.owner)))}</summary>
-                      <div class="option-grid compact" id="editOwner">
-                        ${renderOwnerOptions(splitOwners(task.owner), `editOwner-${task.id}`)}
-                      </div>
-                    </details>
+                    <div class="owner-select-group" id="editOwner">
+                      ${renderOwnerSelects(splitOwners(task.owner))}
+                    </div>
                   </div>
-                  <div class="field">
+                  <div class="field status-field">
                     <label for="editStatus">Durum</label>
                     <select id="editStatus">
                       ${statusOptions.map((item) => `<option ${item === task.status ? "selected" : ""}>${item}</option>`).join("")}
@@ -395,8 +379,7 @@ import Header from '../components/Header.astro';
         if (!response.ok) throw new Error("İşler alınamadı.");
         tasks = await response.json();
         renderFixedOptions("producerInput", producerOptions);
-        document.getElementById("ownerInput").innerHTML = renderOwnerOptions([], "ownerInput");
-        refreshOwnerSummary("ownerInput");
+        document.getElementById("ownerInput").innerHTML = renderOwnerSelects([]);
         renderFilters();
         renderTable();
         if (selectedTaskId && !taskById(selectedTaskId)) selectedTaskId = null;
@@ -483,10 +466,6 @@ import Header from '../components/Header.astro';
         if (button.dataset.action === "delete") {
           deleteTask(button.dataset.id).catch(console.error);
         }
-      });
-      document.addEventListener("change", (event) => {
-        const ownerContainer = event.target.closest("#ownerInput, #editOwner");
-        if (ownerContainer) refreshOwnerSummary(ownerContainer.id);
       });
       document.addEventListener("submit", (event) => {
         if (event.target.id === "editTaskForm") {
