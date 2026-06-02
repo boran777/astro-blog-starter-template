@@ -76,14 +76,11 @@ button {
   text-decoration: none;
 }
 
-.brand-mark {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--blue);
-  color: white;
+.brand-logo {
+  display: block;
+  width: 112px;
+  height: auto;
+  flex: 0 0 auto;
 }
 
 .app-nav {
@@ -317,6 +314,19 @@ select {
   line-height: 1.25;
 }
 
+.compact-multiselect {
+  height: 108px;
+  min-height: 108px;
+}
+
+.case-form {
+  align-items: start;
+}
+
+.case-form textarea {
+  min-height: 108px;
+}
+
 select {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -353,13 +363,41 @@ textarea:focus {
 
 table {
   width: 100%;
-  min-width: 980px;
+  min-width: 1120px;
   border-collapse: collapse;
   background: white;
 }
 
 .tasks-workspace table {
-  min-width: 0;
+  min-width: 1120px;
+}
+
+.col-producer {
+  width: 128px;
+}
+
+.col-title {
+  width: auto;
+}
+
+.col-owner {
+  width: 190px;
+}
+
+.col-status {
+  width: 150px;
+}
+
+.col-priority {
+  width: 112px;
+}
+
+.col-date {
+  width: 126px;
+}
+
+.col-actions {
+  width: 128px;
 }
 
 th,
@@ -376,8 +414,9 @@ th {
   color: var(--muted);
   font-size: 12px;
   font-weight: 850;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 tbody tr:hover {
@@ -392,7 +431,8 @@ tbody tr:hover {
   border-radius: 999px;
   font-size: 13px;
   font-weight: 800;
-  white-space: nowrap;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .pill.blue {
@@ -689,6 +729,7 @@ tbody tr:hover {
   .field.span-6 {
     grid-column: span 2;
   }
+
 }
 
 @media (max-width: 760px) {

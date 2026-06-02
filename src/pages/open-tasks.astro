@@ -82,6 +82,15 @@ import Header from '../components/Header.astro';
           </div>
           <div class="table-wrapper">
             <table>
+              <colgroup>
+                <col class="col-producer" />
+                <col class="col-title" />
+                <col class="col-owner" />
+                <col class="col-status" />
+                <col class="col-priority" />
+                <col class="col-date" />
+                <col class="col-actions" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Üretici</th>
@@ -271,10 +280,22 @@ import Header from '../components/Header.astro';
             <td colspan="7">
               <div class="inline-detail">
                 <form class="task-detail" id="editTaskForm">
-                  <div class="field">
+                  <div class="field span-2">
                     <label for="editProducer">Üretici</label>
                     <select id="editProducer">
                       ${producerOptions.map((item) => `<option ${item === task.producer ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="field span-2">
+                    <label for="editStatus">Durum</label>
+                    <select id="editStatus">
+                      ${statusOptions.map((item) => `<option ${item === task.status ? "selected" : ""}>${item}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="field span-2">
+                    <label for="editPriority">Öncelik</label>
+                    <select id="editPriority">
+                      ${priorityOptions.map((item) => `<option ${item === task.priority ? "selected" : ""}>${item}</option>`).join("")}
                     </select>
                   </div>
                   <div class="field span-2">
@@ -285,23 +306,11 @@ import Header from '../components/Header.astro';
                         .join("")}
                     </select>
                   </div>
-                  <div class="field">
-                    <label for="editStatus">Durum</label>
-                    <select id="editStatus">
-                      ${statusOptions.map((item) => `<option ${item === task.status ? "selected" : ""}>${item}</option>`).join("")}
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="editPriority">Öncelik</label>
-                    <select id="editPriority">
-                      ${priorityOptions.map((item) => `<option ${item === task.priority ? "selected" : ""}>${item}</option>`).join("")}
-                    </select>
-                  </div>
-                  <div class="field span-3">
+                  <div class="field span-2">
                     <label for="editDetail">Detay</label>
                     <textarea id="editDetail">${escapeHtml(task.detail || "")}</textarea>
                   </div>
-                  <div class="field span-3">
+                  <div class="field span-2">
                     <label for="newUpdate">Yeni Güncelleme</label>
                     <textarea id="newUpdate" placeholder="Bu işle ilgili yeni gelişmeyi yazın"></textarea>
                   </div>

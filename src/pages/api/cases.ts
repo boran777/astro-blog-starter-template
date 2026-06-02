@@ -13,12 +13,32 @@ type CaseRecord = {
   summary: string;
   created_at: string;
   updated_at: string;
+  updates?: CaseUpdate[];
+};
+
+type CaseUpdate = {
+  id: number;
+  case_id: number;
+  update_text: string;
+  action: string;
+  created_at: string;
 };
 
 export async function GET({ locals }: { locals: App.Locals }) {
   const db = getDb(locals);
-  const { results } = await db.prepare("SELECT * FROM cases ORDER BY id DESC").all<CaseRecord>();
-  return json(results);
+  const [{ results: cases }, { results: updates }] = await Promise.all([
+    db.prepare("SELECT * FROM cases ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, id DESC").all<CaseRecord>(),
+    db.prepare("SELECT * FROM case_updates ORDER BY created_at DESC, id DESC").all<CaseUpdate>(),
+  ]);
+
+  const updatesByCase = new Map<number, CaseUpdate[]>();
+  for (const update of updates) {
+    const items = updatesByCase.get(update.case_id) || [];
+    items.push(update);
+    updatesByCase.set(update.case_id, items);
+  }
+
+  return json(cases.map((item) => ({ ...item, updates: updatesByCase.get(item.id) || [] })));
 }
 
 export async function POST({ request, locals }: { request: Request; locals: App.Locals }) {
@@ -46,5 +66,13 @@ export async function POST({ request, locals }: { request: Request; locals: App.
     )
     .run();
 
-  return json({ success: true, id: result.meta.last_row_id }, { status: 201 });
+  const caseId = result.meta.last_row_id;
+  const updateText = body.update_text || body.summary || "Case kaydı oluşturuldu.";
+
+  await db
+    .prepare("INSERT INTO case_updates (case_id, update_text, action) VALUES (?, ?, ?)")
+    .bind(caseId, updateText, "Oluşturma")
+    .run();
+
+  return json({ success: true, id: caseId }, { status: 201 });
 }

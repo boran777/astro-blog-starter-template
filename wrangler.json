@@ -17,7 +17,9 @@
   },
   "vars": {
     "REPORT_FROM": "reports@mail.kocsistem.cftenant.com",
-    "REPORT_TO": "boran.kirisoglu@kocsistem.com.tr"
+    "REPORT_TO": "boran.kirisoglu@kocsistem.com.tr",
+    "REPORT_MODEL": "@cf/google/gemma-4-26b-a4b-it",
+    "REPORT_FALLBACK_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
   },
   "ai": {
     "binding": "AI"

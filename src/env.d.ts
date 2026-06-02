@@ -7,6 +7,8 @@ interface Env {
   EMAIL: SendEmail;
   REPORT_FROM: string;
   REPORT_TO: string;
+  REPORT_MODEL: string;
+  REPORT_FALLBACK_MODEL: string;
   REPORT_TOKEN: string;
 }
 

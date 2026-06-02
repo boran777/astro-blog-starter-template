@@ -43,6 +43,13 @@ export async function PUT({
     )
     .run();
 
+  if (body.update_text) {
+    await db
+      .prepare("INSERT INTO case_updates (case_id, update_text, action) VALUES (?, ?, ?)")
+      .bind(params.id, body.update_text, "Güncelleme")
+      .run();
+  }
+
   return json({ success: true });
 }
 
