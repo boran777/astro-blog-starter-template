@@ -13,7 +13,7 @@
   },
   "upload_source_maps": true,
   "triggers": {
-    "crons": ["0 15 * * *"]
+    "crons": ["0 15 * * *", "0 5 * * 1"]
   },
   "vars": {
     "REPORT_FROM": "reports@mail.kocsistem.cftenant.com",
@@ -33,7 +33,9 @@
   ],
   "kv_namespaces": [
     {
-      "binding": "SESSION"
+      "binding": "SESSION",
+      "id": "7feb45688ec945febcbb7d89918227cf",
+      "preview_id": "43d2bc4ac17f49d792299d2af3511881"
     }
   ],
   "send_email": [
